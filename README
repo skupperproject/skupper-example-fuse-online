@@ -1,0 +1,88 @@
+
+[AWS/us-east]$ skupper init
+[AWS/us-east]$ skupper connection-token ~/aws.yaml
+
+[laptop]$ ./skupper-docker connect ~/aws.yaml
+[laptop]$ docker ps
+
+[AWS/us-east]$ oc get pods
+[AWS/us-east]$ skupper status
+[AWS/us-east]$ oc get services
+
+[laptop]$ ./skupper-docker expose host-service --address laptop-db --port 5432
+
+[AWS/us-east]$ oc get services
+
+[laptop]$ ./skupper-docker list-exposed
+# Note the IP address of the exposed service "laptop-db" -- 
+# just the first half -- the network ID.
+
+[laptop]$ sudo vi /var/lib/pgsql/data/pg_hba.conf
+# Go to the section "IPv4 local connections" and add a
+# line that says: 
+#      host all all YOUR.NET.0.0/16   trust
+
+[laptop]$ sudo systemctl restart postgresql.service
+
+
+# Go to Fuse Online connections tab.
+# Hit the "Create Connection" button.
+# Choose "Database"
+# Fill out the form:
+#  ( Note -- you need to configure your database so that
+#            it can log in with the username and password
+#            that you provide here. )
+
+#      Connection URL : jdbc:postgresql/laptop-db/ross
+#      Username       : fuse
+#      Password       : *********
+#      Schema         : 
+
+# Hit the 'Validate' button. 
+# You should see a message that says 
+#    "Database hasd been successfully validated."
+
+
+[laptop]$ psql
+ross=> create table timerEvents (id text, ts timestamp);
+# Don't close this window -- we will be coming back to it.
+
+
+# Go to Fuse Online and save the connector you made.
+# Call it "Laptop DB"
+# Hit the "Create Integration" button.
+# Choose "Timer"
+# Choose the "Simple" option.
+# Enter a period of 10 seconds.
+# Hit "Next".
+# Choose "Laptop DB".
+# Select "Invoke SQL".
+# Enter this SQL statement:
+#    insert into timerEvents (id, ts) values (:#${header.breadcrumbId}, :#${header.firedTime});
+# Hit "Next".
+# Hit "Publish".
+# Enter name: "demo-integration".
+# Hit "Save and Publish".
+
+
+# Go back to the window where you have psql running.
+
+ross=> select * from TimerEvents;
+
+# Probably no data yet. 
+# Go back to the Fuse Online page.
+# Get a cup of coffee.
+# Wait until it says "Published version 1".
+
+# Now go back to your psql window.
+
+ross=> select * from TimerEvents;
+
+# You should see some data print out.
+# Wait a little, and repeat that command.
+# You should see a new row in your database 
+# table every 10 seconds.
+
+
+
+
