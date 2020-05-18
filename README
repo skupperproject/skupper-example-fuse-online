@@ -1,88 +1,51 @@
+# Commands used in the Skupper/Fuse-Online demonstration
 
-[AWS/us-east]$ skupper init
+In this demonstration, there are two environments:
+
+* OpenShift on AWS with FuseOnline installed from OperatorHub
+* A laptop with Docker installed and running
+
+<img src="diagram.png" width="800"/>
+
+## Setting up the Virtual Application Network
+
+The VAN in this demonstration is a simple two-node network, one in the FuseOnline namespace running at AWS and the other running on the laptop in a private network.
+
+We begin by installing Skupper in AWS and creating a connection token.
+
+```[AWS/us-east]$ skupper init
 [AWS/us-east]$ skupper connection-token ~/aws.yaml
+```
 
-[laptop]$ ./skupper-docker connect ~/aws.yaml
-[laptop]$ docker ps
+On the laptop, we then install Skupper (using skupper-docker) and use the AWS connection token to make a secure connection to the AWS namespace.
 
-[AWS/us-east]$ oc get pods
-[AWS/us-east]$ skupper status
-[AWS/us-east]$ oc get services
+```[laptop]$ skupper-docker init
+[laptop]$ skupper-docker connect ~/aws.yaml
+```
 
-[laptop]$ ./skupper-docker expose host-service --address laptop-db --port 5432
+On the laptop, we then expose the Postgresql service into the VAN using the address `laptop-db`
 
-[AWS/us-east]$ oc get services
+```[laptop]$ skupper-docker expose host-service --address laptop-db --port 5432```
 
-[laptop]$ ./skupper-docker list-exposed
-# Note the IP address of the exposed service "laptop-db" -- 
-# just the first half -- the network ID.
+Once this is done, we can validate that the service has been exposed in AWS by seeing a new service called 'laptop-db'
 
-[laptop]$ sudo vi /var/lib/pgsql/data/pg_hba.conf
+```[AWS/us-east]$ oc get services```
+
+We now need to configure Postgres to allow remote connections from the VAN.  The address that will be used can be determined by using the `list-exposed` command.
+
+```[laptop]$ skupper-docker list-exposed```
+
+Note the IP address of the exposed service `laptop-db`
+
+This subnet can be added as a trusted host in Postgres' `pg_hba.conf` file.
+
+```[laptop]$ sudo vi /var/lib/pgsql/data/pg_hba.conf
 # Go to the section "IPv4 local connections" and add a
 # line that says: 
 #      host all all YOUR.NET.0.0/16   trust
+```
 
-[laptop]$ sudo systemctl restart postgresql.service
+The service should then be restarted.
 
-
-# Go to Fuse Online connections tab.
-# Hit the "Create Connection" button.
-# Choose "Database"
-# Fill out the form:
-#  ( Note -- you need to configure your database so that
-#            it can log in with the username and password
-#            that you provide here. )
-
-#      Connection URL : jdbc:postgresql/laptop-db/ross
-#      Username       : fuse
-#      Password       : *********
-#      Schema         : 
-
-# Hit the 'Validate' button. 
-# You should see a message that says 
-#    "Database hasd been successfully validated."
-
-
-[laptop]$ psql
-ross=> create table timerEvents (id text, ts timestamp);
-# Don't close this window -- we will be coming back to it.
-
-
-# Go to Fuse Online and save the connector you made.
-# Call it "Laptop DB"
-# Hit the "Create Integration" button.
-# Choose "Timer"
-# Choose the "Simple" option.
-# Enter a period of 10 seconds.
-# Hit "Next".
-# Choose "Laptop DB".
-# Select "Invoke SQL".
-# Enter this SQL statement:
-#    insert into timerEvents (id, ts) values (:#${header.breadcrumbId}, :#${header.firedTime});
-# Hit "Next".
-# Hit "Publish".
-# Enter name: "demo-integration".
-# Hit "Save and Publish".
-
-
-# Go back to the window where you have psql running.
-
-ross=> select * from TimerEvents;
-
-# Probably no data yet. 
-# Go back to the Fuse Online page.
-# Get a cup of coffee.
-# Wait until it says "Published version 1".
-
-# Now go back to your psql window.
-
-ross=> select * from TimerEvents;
-
-# You should see some data print out.
-# Wait a little, and repeat that command.
-# You should see a new row in your database 
-# table every 10 seconds.
-
-
-
+```[laptop]$ sudo systemctl restart postgresql.service```
 
