@@ -1,5 +1,8 @@
 # Commands used in the Skupper/Fuse-Online demonstration
 
+Please see the video at:    https://youtu.be/Wbrk9p79OJM  !
+
+
 In this demonstration, there are two environments:
 
 * OpenShift on AWS with FuseOnline installed from OperatorHub
@@ -61,3 +64,6 @@ The service should then be restarted.
 ```
 
 At this time, a connector to the database should be able to be created and validated from Fuse Online.
+
+
+
